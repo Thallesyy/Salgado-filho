@@ -8,9 +8,11 @@ import {
   BoxGeometry,
   BufferGeometry,
   Color,
+  CubeCamera,
   DirectionalLight,
   Float32BufferAttribute,
   FogExp2,
+  HalfFloatType,
   HemisphereLight,
   Mesh,
   MeshBasicMaterial,
@@ -22,6 +24,7 @@ import {
   ShaderMaterial,
   SphereGeometry,
   Vector3,
+  WebGLCubeRenderTarget,
   type WebGLRenderTarget,
 } from "three";
 import { frame } from "@/lib/frame";
@@ -246,7 +249,12 @@ export default function Atmosphere() {
     const m = makeSkyMaterial(true);
     const mesh = new Mesh(new SphereGeometry(100, 48, 24), m);
     s.add(mesh);
-    return { scene: s, mat: m, gen: new PMREMGenerator(gl), rt: null as WebGLRenderTarget | null, lastP: -1, lastT: 0, inside: false };
+    // cubo e alvo filtrado fixos: cada atualização reaproveita a mesma memória
+    // (criar e descartar alvos a cada 0,25 s estourava a memória do iPhone)
+    const leve = journey.quality === "low" || journey.quality === "safe";
+    const cubo = new WebGLCubeRenderTarget(leve ? 128 : 256, { type: HalfFloatType, generateMipmaps: false });
+    const cam = new CubeCamera(0.1, 500, cubo);
+    return { scene: s, mat: m, gen: new PMREMGenerator(gl), rt: null as WebGLRenderTarget | null, cubo, cam, intervalo: leve ? 0.6 : 0.25, lastP: -1, lastT: 0, inside: false };
   }, [gl]);
 
   useLayoutEffect(() => {
@@ -261,6 +269,7 @@ export default function Atmosphere() {
       scene.remove(follow, sun, sun.target, hemi);
       scene.fog = null;
       env.rt?.dispose();
+      env.cubo.dispose();
       env.gen.dispose();
     };
   }, [scene, follow, sky, stars, sun, hemi, env]);
@@ -316,20 +325,18 @@ export default function Atmosphere() {
     const now = state.clock.elapsedTime;
     const moved = Math.abs(P - env.lastP) > 0.004;
     const inside = d.interior > 0.5 && journey.finaleRender === 0;
-    if (env.lastP < 0 || inside !== env.inside || (moved && (now - env.lastT > 0.25 || journey.capturing))) {
-      let rt: WebGLRenderTarget;
+    if (env.lastP < 0 || inside !== env.inside || (moved && (now - env.lastT > env.intervalo || journey.capturing))) {
       if (inside) {
         // as vidraças acompanham a cor do céu lá fora
         for (const l of envInterior.lados) (l.material as MeshBasicMaterial).color.copy(d.fogColor).multiplyScalar(1.1 * d.envIntensity + 0.15);
-        rt = env.gen.fromScene(envInterior.scene, 0.02, 0.1, 500);
+        env.cam.update(gl, envInterior.scene);
       } else {
         syncSky(env.mat);
-        rt = env.gen.fromScene(env.scene, 0, 0.1, 500);
+        env.cam.update(gl, env.scene);
       }
       env.inside = inside;
-      env.rt?.dispose();
-      env.rt = rt;
-      scene.environment = rt.texture;
+      env.rt = env.gen.fromCubemap(env.cubo.texture, env.rt);
+      scene.environment = env.rt.texture;
       env.lastP = P;
       env.lastT = now;
     }

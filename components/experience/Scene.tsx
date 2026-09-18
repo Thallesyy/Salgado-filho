@@ -3,7 +3,7 @@
 import { PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ACESFilmicToneMapping, PCFShadowMap, type PerspectiveCamera, Vector3 } from "three";
+import { ACESFilmicToneMapping, PCFShadowMap, type PerspectiveCamera, Vector3, type Object3D } from "three";
 import { GALLERY_SHOTS } from "@/lib/content";
 import { direct } from "@/lib/director";
 import { frame } from "@/lib/frame";
@@ -97,8 +97,10 @@ function grab(src: HTMLCanvasElement, width: number) {
  * every shader). "lazy" (safe tier): no burst of off-journey renders, each still
  * is taken from the live frame when the viewer scrolls past its moment.
  */
-function StillCapture({ onDone, mode }: { onDone: () => void; mode: "preload" | "lazy" }) {
+function StillCapture({ onDone, mode, aquecer = false }: { onDone: () => void; mode: "preload" | "lazy"; aquecer?: boolean }) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   const st = useRef({ i: 0, wait: 0, images: [] as string[], done: false, warm: 0, lazyReady: false, t0: 0 });
 
   useFrame(() => {
@@ -106,6 +108,21 @@ function StillCapture({ onDone, mode }: { onDone: () => void; mode: "preload" | 
     if (mode === "lazy") {
       if (!s.lazyReady) {
         s.lazyReady = true;
+        // celular: compila todos os shaders ainda na abertura, com tudo visível por
+        // um instante, para a rolagem rápida não disparar várias compilações de uma vez
+        if (aquecer) {
+          const escondidos: Object3D[] = [];
+          scene.traverse((o) => {
+            if (!o.visible) {
+              escondidos.push(o);
+              o.visible = true;
+            }
+          });
+          try {
+            gl.compile(scene, camera);
+          } catch {}
+          for (const o of escondidos) o.visible = false;
+        }
         onDone();
       }
       if (!journey.ready || journey.capturing) return;
@@ -298,7 +315,10 @@ export default function Scene({ onReady, tier, onContextLost }: { onReady: () =>
       dpr={dpr}
       gl={{ antialias: false, powerPreference: safe ? "default" : "high-performance", stencil: false, alpha: false }}
       camera={{ fov: 34, near: 0.6, far: 60000, position: [-70, 72, 250] }}
-      style={{ position: "fixed", inset: 0 }}
+      className="poa-canvas"
+      // redimensionar realoca todos os buffers do pós-processamento; com a altura
+      // fixa em 100lvh (CSS) a barra do navegador do celular não provoca isso
+      resize={{ debounce: { scroll: 0, resize: 250 } }}
     >
       <PerformanceMonitor
         flipflops={3}
@@ -316,7 +336,7 @@ export default function Scene({ onReady, tier, onContextLost }: { onReady: () =>
       <CalloutProjector />
       <Suspense fallback={null}>
         <World />
-        <StillCapture onDone={onReady} mode={safe || tier === "low" ? "lazy" : "preload"} />
+        <StillCapture onDone={onReady} mode={safe || tier === "low" ? "lazy" : "preload"} aquecer={tier === "low"} />
       </Suspense>
       {safe ? <SafeRender /> : params?.get("fx") !== "off" ? <Effects quality={quality} /> : <PlainRender />}
       {process.env.NODE_ENV !== "production" && <DebugShooter />}
