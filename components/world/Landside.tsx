@@ -207,7 +207,7 @@ export default function Landside() {
         0.45,
       ),
       estacionamentoMat: aplicarPbr(
-        new MeshStandardMaterial({ color: "#4a4b4d", roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
+        new MeshStandardMaterial({ color: "#6d6c69", roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
         asfaltoPatio,
         PBR.asfalto,
         0.55,

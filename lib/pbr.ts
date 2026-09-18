@@ -84,6 +84,8 @@ export function aplicarPbr(material: MeshStandardMaterial, pbr: Pbr, id: PbrId, 
   material.normalScale = new Vector2(forca, forca);
   material.roughnessMap = pbr.roughnessMap ?? null;
   material.roughness = Math.min(1, material.roughness / MEDIA_RUGOSIDADE[id]);
+  // asfalto quase não espelha: sem isso, em ângulo rasante ele pega o azul do céu
+  if (id === PBR.asfalto) material.envMapIntensity = 0.45;
   material.needsUpdate = true;
   return material;
 }

@@ -86,6 +86,8 @@ export class MotionBlurEffect extends Effect {
   strength = 0.5;
   attached = 0;
   ca = 0;
+  /** intervalo fixo entre quadros (gravação de vídeo); 0 usa o relógio real */
+  fixedDelta = 0;
 
   constructor() {
     super("MotionBlurEffect", motionBlurFrag, {
@@ -122,7 +124,8 @@ export class MotionBlurEffect extends Effect {
     u.get("uInvViewProj")!.value.copy(this.viewProj).invert();
     u.get("uPrevViewProj")!.value.copy(this.prevViewProj);
     // normalise to a 60 fps shutter so blur length is frame-rate independent
-    const fpsScale = Math.min(2.5, 1 / 60 / Math.max(deltaTime, 1 / 240));
+    const dt = this.fixedDelta || deltaTime;
+    const fpsScale = Math.min(2.5, 1 / 60 / Math.max(dt, 1 / 240));
     u.get("uStrength")!.value = this.strength * fpsScale;
     u.get("uAttached")!.value = this.attached;
     u.get("uCA")!.value = this.ca;

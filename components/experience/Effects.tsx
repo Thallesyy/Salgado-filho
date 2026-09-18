@@ -46,10 +46,14 @@ export default function Effects({ quality }: { quality: "high" | "medium" | "low
     if (process.env.NODE_ENV !== "production") ao.debug = !!(window as unknown as { __poaAO?: boolean }).__poaAO;
 
     // blur: stronger while the aircraft is fast, attach cabin geometry to camera
-    motion.strength = journey.capturing || journey.reducedMotion ? 0 : 0.55 + 0.35 * frame.speedFeel;
+    // gravação de vídeo quadro a quadro mantém o desfoque, com obturador de 24 quadros
+    const video = journey.videoTime !== null;
+    const still = journey.capturing && !video;
+    motion.strength = still || journey.reducedMotion ? 0 : 0.55 + 0.35 * frame.speedFeel;
     motion.attached = frame.shot.inAircraft > 0.5 ? 14 : 0;
-    motion.ca = journey.capturing ? 0 : 0.0012 * frame.speedFeel + 0.0004;
-    if (journey.capturing) motion.reset();
+    motion.ca = still ? 0 : 0.0012 * frame.speedFeel + 0.0004;
+    motion.fixedDelta = video ? 1 / 24 : 0;
+    if (still) motion.reset();
 
     const f = dof.current;
     if (f) {

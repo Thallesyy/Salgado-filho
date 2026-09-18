@@ -261,10 +261,18 @@ function DebugShooter() {
     c.width = job.w ?? 1024;
     c.height = Math.round((src.height / src.width) * c.width);
     c.getContext("2d")!.drawImage(src, 0, 0, c.width, c.height);
-    const data = c.toDataURL("image/jpeg", 0.85);
+    const data = c.toDataURL("image/jpeg", job.w ? 0.93 : 0.85);
     inflight.current++;
     fetch("/api/shot", { method: "POST", body: JSON.stringify({ name: job.name, data }) }).finally(() => inflight.current--);
     q.current.shift();
+    const next = q.current[0];
+    if (next && next.t !== undefined && job.t !== undefined) {
+      // vídeo: já deixa a pose do próximo quadro para o próximo desenho, um desenho por quadro
+      journey.render = next.p;
+      journey.finaleRender = next.finale ?? 0;
+      journey.videoTime = next.t;
+      next.wait = Math.max(next.wait, (next.settle ?? 8) - 1);
+    }
     if (!q.current.length) {
       journey.capturing = false;
       journey.videoTime = null;
