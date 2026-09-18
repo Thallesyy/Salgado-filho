@@ -1,0 +1,8 @@
+node_modules
+.next
+.next-*
+.shots
+.vercel
+.env*.local
+*.tsbuildinfo
+.DS_Store

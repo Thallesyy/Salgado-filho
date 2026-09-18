@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--nf-display), "Times New Roman", serif;
+  --font-sans: var(--nf-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--nf-mono), Menlo, monospace;
+  --color-ink: #07080a;
+  --color-paper: #f3efe7;
+  --color-amber: #ffb347;
+  --color-dim: rgba(243, 239, 231, 0.62);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #07080a;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #07080a;
+  color: #f3efe7;
+  font-family: var(--nf-sans), "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: #ffb347;
+  color: #07080a;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(12, 14, 18, 0.62), rgba(12, 14, 18, 0.38));
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(243, 239, 231, 0.1);
+}
+
+.hairline {
+  background: linear-gradient(90deg, rgba(243, 239, 231, 0.5), rgba(243, 239, 231, 0));
+  height: 1px;
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.cursor-none,
+.cursor-none * {
+  cursor: none;
+}
+
+/* rolagem horizontal com encaixe na galeria do celular */
+.snap-strip {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-strip > li {
+  scroll-snap-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
