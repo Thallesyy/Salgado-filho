@@ -1,8 +1,7 @@
 "use client";
 
-import { useTexture } from "@react-three/drei";
-import { useMemo } from "react";
-import { NoColorSpace, RepeatWrapping, SRGBColorSpace, Vector2, type MeshStandardMaterial, type Texture } from "three";
+import { useEffect, useMemo, useState } from "react";
+import { NoColorSpace, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2, type MeshStandardMaterial, type Texture } from "three";
 
 /**
  * Mapas de material fotografados (ambientCG, licença CC0), guardados em
@@ -40,29 +39,59 @@ function escalar(base: Texture, rx: number, ry: number, srgb: boolean) {
 
 export type Pbr = { map?: Texture; normalMap?: Texture; roughnessMap?: Texture };
 
-/**
- * Carrega um conjunto de mapas e devolve as texturas já na escala pedida
- * (`repeat` em repetições por superfície inteira, não por metro).
- * Vale para todos os níveis, inclusive o seguro: é só leitura de textura,
- * sem alvo de renderização, então não pesa em driver instável.
- */
-export function usePbr(id: PbrId, repeat: [number, number], opts: { cor?: boolean } = {}): Pbr {
-  const urls = useMemo(() => ({ normalMap: arquivo(id, MAPAS.normal), roughnessMap: arquivo(id, MAPAS.rugosidade), map: arquivo(id, MAPAS.cor) }), [id]);
-  const carregadas = useTexture(urls) as unknown as Record<string, Texture>;
-  const [rx, ry] = repeat;
-  return useMemo(() => {
-    const saida: Pbr = {
-      normalMap: escalar(carregadas.normalMap, rx, ry, false),
-      roughnessMap: escalar(carregadas.roughnessMap, rx, ry, false),
-    };
-    if (opts.cor) saida.map = escalar(carregadas.map, rx, ry, true);
-    return saida;
-  }, [carregadas, rx, ry, opts.cor]);
+/** Uma carga por arquivo, compartilhada por todos os componentes. */
+const cargas = new Map<string, Promise<Texture>>();
+const prontas = new Map<string, Texture>();
+function carregar(url: string) {
+  let c = cargas.get(url);
+  if (!c) {
+    c = new TextureLoader().loadAsync(url).then((t) => {
+      prontas.set(url, t);
+      return t;
+    });
+    cargas.set(url, c);
+  }
+  return c;
 }
 
-/** Deixa as imagens prontas antes de a viagem começar. */
+/**
+ * Devolve os mapas já na escala pedida (`repeat` em repetições por superfície
+ * inteira, não por metro). Não segura a cena: enquanto as imagens chegam, o
+ * resultado é vazio e a superfície aparece lisa; quando chegam, o componente
+ * redesenha com relevo. Numa conexão lenta de celular, o aeroporto aparece na
+ * hora e ganha textura depois, em vez de a tela ficar só com o céu.
+ */
+export function usePbr(id: PbrId, repeat: [number, number], opts: { cor?: boolean } = {}): Pbr {
+  const urls = [arquivo(id, MAPAS.normal), arquivo(id, MAPAS.rugosidade), arquivo(id, MAPAS.cor)];
+  const todas = () => urls.every((u) => prontas.has(u));
+  const [ok, setOk] = useState(todas);
+  useEffect(() => {
+    if (ok) return;
+    let vivo = true;
+    Promise.all(urls.map(carregar))
+      .then(() => vivo && setOk(true))
+      .catch(() => {}); // sem textura, a superfície só fica lisa
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, ok]);
+  const [rx, ry] = repeat;
+  return useMemo(() => {
+    if (!ok) return {};
+    const saida: Pbr = {
+      normalMap: escalar(prontas.get(urls[0])!, rx, ry, false),
+      roughnessMap: escalar(prontas.get(urls[1])!, rx, ry, false),
+    };
+    if (opts.cor) saida.map = escalar(prontas.get(urls[2])!, rx, ry, true);
+    return saida;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ok, id, rx, ry, opts.cor]);
+}
+
+/** Começa a baixar as imagens cedo, sem esperar os componentes pedirem. */
 export function preloadPbr() {
-  for (const id of Object.values(PBR)) for (const m of Object.values(MAPAS)) useTexture.preload(arquivo(id, m));
+  for (const id of Object.values(PBR)) for (const m of Object.values(MAPAS)) carregar(arquivo(id, m)).catch(() => {});
 }
 
 /** Média de cinza de cada mapa de rugosidade, medida nos arquivos instalados. */

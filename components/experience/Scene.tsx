@@ -1,6 +1,6 @@
 "use client";
 
-import { PerformanceMonitor } from "@react-three/drei";
+import { PerformanceMonitor, useProgress } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ACESFilmicToneMapping, PCFShadowMap, type PerspectiveCamera, Vector3 } from "three";
@@ -99,7 +99,7 @@ function grab(src: HTMLCanvasElement, width: number) {
  */
 function StillCapture({ onDone, mode }: { onDone: () => void; mode: "preload" | "lazy" }) {
   const gl = useThree((s) => s.gl);
-  const st = useRef({ i: 0, wait: 0, images: [] as string[], done: false, warm: 0, lazyReady: false });
+  const st = useRef({ i: 0, wait: 0, images: [] as string[], done: false, warm: 0, lazyReady: false, t0: 0 });
 
   useFrame(() => {
     const s = st.current;
@@ -128,6 +128,9 @@ function StillCapture({ onDone, mode }: { onDone: () => void; mode: "preload" | 
       onDone();
       return;
     }
+    // espera modelos, pessoas e texturas chegarem (no máximo 25 s) para as fotos da galeria saírem completas
+    if (!s.t0) s.t0 = performance.now();
+    if (s.warm === 0 && useProgress.getState().active && performance.now() - s.t0 < 25000) return;
     if (window.location.search.includes("nocapture")) {
       s.done = true;
       journey.capturing = false;
@@ -313,7 +316,7 @@ export default function Scene({ onReady, tier, onContextLost }: { onReady: () =>
       <CalloutProjector />
       <Suspense fallback={null}>
         <World />
-        <StillCapture onDone={onReady} mode={safe ? "lazy" : "preload"} />
+        <StillCapture onDone={onReady} mode={safe || tier === "low" ? "lazy" : "preload"} />
       </Suspense>
       {safe ? <SafeRender /> : params?.get("fx") !== "off" ? <Effects quality={quality} /> : <PlainRender />}
       {process.env.NODE_ENV !== "production" && <DebugShooter />}

@@ -47,13 +47,16 @@ export function detectTier(): { tier: Tier; renderer: string; reason: string } {
 
   const r = renderer.toLowerCase();
   const linux = /linux/i.test(navigator.userAgent) && !/android/i.test(navigator.userAgent);
-  const mobile = /android|iphone|ipad/i.test(navigator.userAgent);
+  // o iPad se apresenta como Mac; a tela sensível a toque entrega
+  const mobile = /android|iphone|ipad/i.test(navigator.userAgent) || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   // nouveau: "nouveau", or Mesa exposing an NVIDIA codename (NV50, NVC1, NVD9, NVE7, NV106…)
   const nouveau = /nouveau/.test(r) || (/mesa/.test(r) && /\bnv[0-9a-f]{2,3}\b/.test(r));
   // Firefox masks renderers; on Linux an old generic GeForce bucket is almost always nouveau
   const firefoxOldNvidia = linux && /or similar/.test(r) && /geforce (gtx? )?[4-7][0-9]{2}\b/.test(r);
   if (nouveau || firefoxOldNvidia) return { tier: "safe", renderer, reason: "open-source NVIDIA driver (nouveau)" };
   if (/llvmpipe|swiftshader|softpipe|software|microsoft basic/.test(r)) return { tier: "safe", renderer, reason: "software rendering" };
-  if (mobile || /intel|mali|adreno|powervr|apple m1\b/.test(r)) return { tier: "medium", renderer, reason: "integrated / mobile GPU" };
+  // celular: memória de vídeo curta e o sistema fecha a aba sem aviso, então nível baixo
+  if (mobile) return { tier: "low", renderer, reason: "mobile GPU" };
+  if (/intel|mali|adreno|powervr|apple m1\b/.test(r)) return { tier: "medium", renderer, reason: "integrated GPU" };
   return { tier: "high", renderer, reason: "discrete GPU" };
 }

@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Euler, InstancedMesh, Matrix4, Mesh, Quaternion, Vector3, type Material, type BufferGeometry } from "three";
 import { journey } from "@/lib/journey";
 import type { Xform } from "./helpers";
+import Opcional from "./Opcional";
 
 /**
  * Objetos de cena vindos de modelos 3D com licença CC0 (Poly Haven).
@@ -12,16 +13,16 @@ import type { Xform } from "./helpers";
  * cópias houver, o custo de desenho continua sendo o número de partes do modelo.
  */
 export const MODELO = {
-  banco: "/modelos/modular_street_seating/modular_street_seating.gltf",
-  planta: "/modelos/pachira_aquatica_01/pachira_aquatica_01.gltf",
-  plantaBaixa: "/modelos/anthurium_botany_01/anthurium_botany_01.gltf",
-  lixeira: "/modelos/metal_trash_can/metal_trash_can.gltf",
-  placaPiso: "/modelos/WetFloorSign_01/WetFloorSign_01.gltf",
-  carrinhoCafe: "/modelos/CoffeeCart_01/CoffeeCart_01.gltf",
-  mesaCadeiras: "/modelos/outdoor_table_chair_set_01/outdoor_table_chair_set_01.gltf",
-  extintor: "/modelos/korean_fire_extinguisher_01/korean_fire_extinguisher_01.gltf",
-  relogio: "/modelos/wall_clock/wall_clock.gltf",
-  carrinho: "/modelos/industrial_storage_cart/industrial_storage_cart.gltf",
+  banco: "/modelos/modular_street_seating/modular_street_seating.glb",
+  planta: "/modelos/pachira_aquatica_01/pachira_aquatica_01.glb",
+  plantaBaixa: "/modelos/anthurium_botany_01/anthurium_botany_01.glb",
+  lixeira: "/modelos/metal_trash_can/metal_trash_can.glb",
+  placaPiso: "/modelos/WetFloorSign_01/WetFloorSign_01.glb",
+  carrinhoCafe: "/modelos/CoffeeCart_01/CoffeeCart_01.glb",
+  mesaCadeiras: "/modelos/outdoor_table_chair_set_01/outdoor_table_chair_set_01.glb",
+  extintor: "/modelos/korean_fire_extinguisher_01/korean_fire_extinguisher_01.glb",
+  relogio: "/modelos/wall_clock/wall_clock.glb",
+  carrinho: "/modelos/industrial_storage_cart/industrial_storage_cart.glb",
 } as const;
 
 const _m = new Matrix4();
@@ -32,7 +33,15 @@ const _p = new Vector3();
 const _s = new Vector3();
 
 /** Espalha um modelo glTF em várias posições usando malhas instanciadas. */
-export function InstancedModel({ url, items, shadows = true }: { url: string; items: Xform[]; shadows?: boolean }) {
+export function InstancedModel(props: { url: string; items: Xform[]; shadows?: boolean }) {
+  return (
+    <Opcional>
+      <Modelo {...props} />
+    </Opcional>
+  );
+}
+
+function Modelo({ url, items, shadows = true }: { url: string; items: Xform[]; shadows?: boolean }) {
   const { scene } = useGLTF(url);
   const meshes = useMemo(() => {
     if (!items.length) return [];

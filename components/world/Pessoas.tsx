@@ -39,6 +39,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { clone as clonarComEsqueleto } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { journey } from "@/lib/journey";
 import { mulberry32 } from "@/lib/math";
+import Opcional from "./Opcional";
 import type { Agent } from "./People";
 
 /**
@@ -356,7 +357,15 @@ const _raiz = new Matrix4();
  * cadência amarrada à distância percorrida (o pé não escorrega), quem espera
  * fica parado com um leve balanço, e os sentados usam a pose de assento.
  */
-export default function Crowd({ agents, visibleIn, scale = 1 }: { agents: Agent[]; visibleIn: [number, number][]; scale?: number }) {
+export default function Crowd(props: { agents: Agent[]; visibleIn: [number, number][]; scale?: number }) {
+  return (
+    <Opcional>
+      <Multidao {...props} />
+    </Opcional>
+  );
+}
+
+function Multidao({ agents, visibleIn, scale = 1 }: { agents: Agent[]; visibleIn: [number, number][]; scale?: number }) {
   const group = useRef<Group>(null);
   const gltfs = TIPOS.map((t) => useGLTF(PESSOA[t].url)); // eslint-disable-line react-hooks/rules-of-hooks
 
